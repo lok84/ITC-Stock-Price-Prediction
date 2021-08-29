@@ -1,0 +1,83 @@
+import numpy as np 
+import pandas as pd 
+import os
+from fbprophet import Prophet
+from matplotlib import pyplot as plt
+import plotly.express as px
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import warnings
+warnings.filterwarnings('ignore')
+np.random.seed(42)
+
+import pandas as pd
+import numpy as np
+from datetime import datetime
+#to plot within notebook
+import matplotlib.pyplot as plt
+from matplotlib import style
+style.use('ggplot')
+##%matplotlib inline
+#for normalizing data
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler(feature_range=(0, 1))
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import recall_score, precision_score
+from mlxtend.plotting import plot_decision_regions
+from google.colab import drive
+drive.mount("/content/gdrive")
+data=pd.read_csv('/content/gdrive/My Drive/Data sets/ITC.csv')
+data.head()
+data = data[['Open', 'High', 'Low', 'Close', 'Turnover', 'Date', 'Prev Close', 'Deliverable Volume', 'Trades']]
+data['HL_PCT'] = (data['High'] - data['Low']) / data['Low'] * 100.0
+
+data = data[['Open', 'HL_PCT', 'Close', 'Turnover', 'Date', 'Prev Close', 'Deliverable Volume', 'Trades']]
+
+#tocks = stocks[[‘OPEN’, ‘HIGH’, ‘LOW’, ‘CLOSE’, ‘TOTTRDQTY’, ‘Date’, ‘PREVCLOSE’, ‘TOTTRDVAL’, ‘TOTALTRADES’]]
+start16 = datetime(2016, 1, 1)
+end16 = datetime(2016, 12, 31)
+stamp16 = pd.date_range(start16, end16)
+start17 = datetime(2017, 1, 1)
+end17 = datetime(2017, 12, 31)
+stamp17 = pd.date_range(start17, end17)
+data['Date'] = pd.to_datetime(data.Date,format='%Y-%m-%d')
+data.index = data['Date']
+train = []
+test = []
+for index, rows in data.iterrows():
+    if index in stamp16:
+        train.append(list(rows))
+    if index in stamp17:
+        test.append(list(rows))
+train = pd.DataFrame(train, columns = data.columns)
+test = pd.DataFrame(test, columns = data.columns)
+#Pre-Processing the Train Data 
+X_train = train[['HL_PCT', 'Open', 'Turnover', 'Deliverable Volume', 'Trades']]
+x_train = X_train.to_dict(orient='records')
+vec = DictVectorizer()
+X = vec.fit_transform(x_train).toarray()
+Y = np.asarray(train.Close)
+Y = Y.astype('int')
+#Pre-Processing Test data
+X_test = test[['HL_PCT', 'Open', 'Turnover', 'Deliverable Volume', 'Trades']]
+x_test = X_test.to_dict(orient='records')
+vec = DictVectorizer()
+x = vec.fit_transform(x_test).toarray()
+y = np.asarray(test.Close)
+y = y.astype('int')
+from sklearn.linear_model import TheilSenRegressor
+clf = TheilSenRegressor()
+clf.fit(X, Y) 
+print("Accuracy of this Statistical Arbitrage model is: ",clf.score(x,y))
+predict = clf.predict(x)
+test['predict'] = predict
+train.index = train.Date
+test.index = test.Date
+train['Close'].plot()
+test['Close'].plot()
+test['predict'].plot()
+plt.legend(loc='best')
+plt.xlabel('Date')
+plt.ylabel('Price')
+plt.show()
